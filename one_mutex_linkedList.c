@@ -6,6 +6,13 @@
 
 pthread_mutex_t list_mutex;
 
+typedef struct {
+    LinkedList* list;
+    int operations;  
+    double mMember, mInsert, mDelete;
+} ThreadData;
+
+
 typedef struct node {
     int data;
     struct node* next;
@@ -121,6 +128,7 @@ int random_number(int max) {
 void* thread_work(void* arg) {
 
 
+
     return NULL;
 }
 
@@ -135,9 +143,8 @@ int main() {
 
     int n = 1000;
     int m = 10000;
+    int thread_count = 2;
     double mMember = 0.99, mInsert = 0.005, mDelete = 0.005;
-
-    
 
     srand(time(NULL)); // seed randomness
 
@@ -151,6 +158,12 @@ int main() {
     }
 
     double start = get_time_in_seconds();
+
+    pthread_t threads[thread_count];
+
+    for(int i = 0 ; i < thread_count; i++){
+
+    }
 
     for (int i = 0; i < m; i++) {
         double prob = (double) rand() / RAND_MAX;
