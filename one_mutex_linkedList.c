@@ -2,6 +2,9 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>  
+#include <pthread.h>
+
+pthread_mutex_t list_mutex;
 
 typedef struct node {
     int data;
@@ -115,13 +118,26 @@ int random_number(int max) {
     return rand() % max;   // random number [0, max-1]
 }
 
+void* thread_work(void* arg) {
+
+
+    return NULL;
+}
+
+
 int main() {
 
     LinkedList* list = list_create();
 
+
+    pthread_mutex_init(&list_mutex, NULL);
+
+
     int n = 1000;
     int m = 10000;
     double mMember = 0.99, mInsert = 0.005, mDelete = 0.005;
+
+    
 
     srand(time(NULL)); // seed randomness
 
