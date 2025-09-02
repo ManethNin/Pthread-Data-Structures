@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <sys/time.h>  
 
 typedef struct node {
     int data;
@@ -16,8 +18,8 @@ LinkedList* list_create(){
     return linkedList;
 }
 
-void printMembers(LinkedList* list){
-    if(!list->head){
+void print_list(LinkedList* list){
+    if(!list || !list->head){
         printf("Empty list\n");
         return;
     }
@@ -34,7 +36,6 @@ void printMembers(LinkedList* list){
 
 int member(LinkedList* list, int value){
     if(!list || !list->head){
-        printf("Empty list \n");
         return 0;
     }
 
@@ -51,13 +52,13 @@ int member(LinkedList* list, int value){
     return 0;
 }
 
-void insert(LinkedList* list, int value){
+int insert(LinkedList* list, int value){
     if(list->head == NULL || value < list->head->data){
         Node* newNode = malloc(sizeof(Node));
         newNode->data = value;
         newNode->next = list->head;
         list->head = newNode;
-        return;
+        return 1;
     }
 
     Node* current = list->head;
@@ -66,20 +67,20 @@ void insert(LinkedList* list, int value){
         current = current->next;
     }
 
-    if(current->next && value == current->next->data){
-        return;
+    if((current->next && value == current->next->data) || current->data == value){
+        return 0;
     }
 
     Node* newNode = malloc(sizeof(Node));
     newNode->data = value;
     newNode->next = current->next;
     current->next = newNode;
+    return 1;
 }
 
-void delete(LinkedList* list, int value){
+int delete(LinkedList* list, int value){
     if(!list->head){
-        printf("Empty List");
-        return;
+        return 0;
     }
     Node* current = list->head;
     Node* previous = list->head;
@@ -89,48 +90,71 @@ void delete(LinkedList* list, int value){
         current = current->next;
 
         if(!current){
-            printf("Number not in the list\n");
-            return;
+            return 0;
         }
     }
     if(previous == current){
         list->head = current->next;
         free(current);
-        return;
+        return 1;
     }
 
     previous->next = current->next;
     free(current);
+    return 1;
 
 }
 
+double get_time_in_seconds() {
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    return (t.tv_sec + t.tv_usec / 1000000.0);
+}
+
+int random_number(int max) {
+    return rand() % max;   // random number [0, max-1]
+}
 
 int main() {
-    printf("Hello, Lab 1!\n");
 
     LinkedList* list = list_create();
 
 
-    insert(list, 4);
-    insert(list, 7);
-    insert(list, 5);
-    insert(list, 3);
-    insert(list, 4);
-    insert(list, 5);
-    insert(list, 8);
-    insert(list, 1);
+    int n = 1000;
+    int m = 10000;
+    double mMember = 0.99, mInsert = 0.005, mDelete = 0.005;
 
-    printMembers(list);
+    srand(time(NULL)); // seed randomness
 
-    delete(list, 12);
+    for(int i = 0 ; i < n ; i++){
+        int value = random_number(65536);
+        if(member(list,value) == 0){
+            insert(list, value);
+            continue;
+        }
+        i--;
+    }
 
-    printMembers(list);
+    double start = get_time_in_seconds();
 
-    int found = member(list,1);
+    for (int i = 0; i < m; i++) {
+        double prob = (double) rand() / RAND_MAX;
+        int val = random_number(65536);
 
-    printf("Is find : %d\n",found);
+        if (prob < mMember) {
+            member(list, val);
+        } else if (prob < mMember + mInsert) {
+            insert(list, val);
+        } else {
+            delete(list, val);
+        }
+    }
 
-    printMembers(list);
+    double end = get_time_in_seconds();
+
+    printf("Time for %d operations = %f seconds\n", m, end - start);    
+
+    print_list(list);
 
     return 0;
 }
