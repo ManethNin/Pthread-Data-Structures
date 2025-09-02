@@ -6,12 +6,6 @@
 
 pthread_mutex_t list_mutex;
 
-typedef struct {
-    LinkedList* list;
-    int operations;  
-    double mMember, mInsert, mDelete;
-} ThreadData;
-
 
 typedef struct node {
     int data;
@@ -21,6 +15,13 @@ typedef struct node {
 typedef struct linkedList {
     Node* head;
 }LinkedList;
+
+typedef struct threaddata{
+    LinkedList* list;
+    int operations;  
+    double mMember, mInsert, mDelete;
+} ThreadData;
+
 
 LinkedList* list_create(){
     LinkedList* linkedList = malloc(sizeof(LinkedList));
@@ -127,8 +128,23 @@ int random_number(int max) {
 
 void* thread_work(void* arg) {
 
+    ThreadData* data = (ThreadData*) arg;
+    for (int i = 0; i < data->operations; i++) {
+        double prob = (double) rand() / RAND_MAX;
+        int val = random_number(65536);
 
+        pthread_mutex_lock(&list_mutex);
 
+        if (prob < data->mMember) {
+            member(data->list, val);
+        } else if (prob < data->mMember + data->mInsert) {
+            insert(data->list, val);
+        } else {
+            delete(data->list, val);
+        }
+        pthread_mutex_unlock(&list_mutex);
+
+    }
     return NULL;
 }
 
@@ -137,9 +153,7 @@ int main() {
 
     LinkedList* list = list_create();
 
-
     pthread_mutex_init(&list_mutex, NULL);
-
 
     int n = 1000;
     int m = 10000;
@@ -156,31 +170,33 @@ int main() {
         }
         i--;
     }
+    
+    pthread_t threads[thread_count];
+    ThreadData* data[thread_count];
+
+    
+    for(int i = 0 ; i < thread_count; i++){
+        data[i] = malloc(sizeof(ThreadData));
+        data[i]->list = list;
+        data[i]->mDelete = mDelete;
+        data[i]->mInsert = mInsert;
+        data[i]->mMember = mMember;
+        data[i]->operations = m / thread_count;
+    }
 
     double start = get_time_in_seconds();
 
-    pthread_t threads[thread_count];
-
-    for(int i = 0 ; i < thread_count; i++){
-
+    for(int i = 0 ; i < thread_count ; i++){
+        pthread_create(&threads[i], NULL, thread_work, data[i]);
     }
 
-    for (int i = 0; i < m; i++) {
-        double prob = (double) rand() / RAND_MAX;
-        int val = random_number(65536);
-
-        if (prob < mMember) {
-            member(list, val);
-        } else if (prob < mMember + mInsert) {
-            insert(list, val);
-        } else {
-            delete(list, val);
-        }
+    for(int i = 0 ; i < thread_count ; i++){
+        pthread_join(threads[i], NULL);
     }
 
     double end = get_time_in_seconds();
 
-    printf("Time for %d operations with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", m, mMember,mInsert, mDelete, end - start);    
+    printf("Time with one mutex for %d operations with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", m, mMember,mInsert, mDelete, end - start);    
 
     // print_list(list);
 

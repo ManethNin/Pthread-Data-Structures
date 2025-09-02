@@ -151,7 +151,7 @@ int main() {
 
     double end = get_time_in_seconds();
 
-    printf("Time for %d operations with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", m, mMember,mInsert, mDelete, end - start);    
+    printf("Time with serial for %d operations with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", m, mMember,mInsert, mDelete, end - start);    
 
     // print_list(list);
 
