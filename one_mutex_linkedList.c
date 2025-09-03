@@ -196,7 +196,7 @@ int main() {
 
     double end = get_time_in_seconds();
 
-    printf("Time with one mutex for %d operations with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", m, mMember,mInsert, mDelete, end - start);    
+    printf("Time with one mutex using %d threads with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", thread_count, mMember,mInsert, mDelete, end - start);    
 
     // print_list(list);
 

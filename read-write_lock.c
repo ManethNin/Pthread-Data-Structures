@@ -2,6 +2,10 @@
 #include <stdlib.h>
 #include <time.h>
 #include <sys/time.h>  
+#include <pthread.h>
+
+pthread_rwlock_t list_rwlock;
+
 
 typedef struct node {
     int data;
@@ -11,6 +15,13 @@ typedef struct node {
 typedef struct linkedList {
     Node* head;
 }LinkedList;
+
+typedef struct threaddata{
+    LinkedList* list;
+    int operations;  
+    double mMember, mInsert, mDelete;
+} ThreadData;
+
 
 LinkedList* list_create(){
     LinkedList* linkedList = malloc(sizeof(LinkedList));
@@ -115,12 +126,44 @@ int random_number(int max) {
     return rand() % max;   // random number [0, max-1]
 }
 
+void* thread_work(void* arg) {
+
+    ThreadData* data = (ThreadData*) arg;
+    for (int i = 0; i < data->operations; i++) {
+        double prob = (double) rand() / RAND_MAX;
+        int val = random_number(65536);
+
+
+        if (prob < data->mMember) {
+            pthread_rwlock_rdlock(&list_rwlock);
+            member(data->list, val);
+            pthread_rwlock_unlock(&list_rwlock);
+
+        } else if (prob < data->mMember + data->mInsert) {
+            pthread_rwlock_wrlock(&list_rwlock);
+            insert(data->list, val);
+            pthread_rwlock_unlock(&list_rwlock);
+
+        } else {
+            pthread_rwlock_wrlock(&list_rwlock);
+            delete(data->list, val);
+            pthread_rwlock_unlock(&list_rwlock);
+        }
+
+    }
+    return NULL;
+}
+
+
 int main() {
 
     LinkedList* list = list_create();
 
+    pthread_rwlock_init(&list_rwlock, NULL);
+
     int n = 1000;
     int m = 10000;
+    int thread_count = 8;
     double mMember = 0.99, mInsert = 0.005, mDelete = 0.005;
 
     srand(time(NULL)); // seed randomness
@@ -133,25 +176,33 @@ int main() {
         }
         i--;
     }
+    
+    pthread_t threads[thread_count];
+    ThreadData* data[thread_count];
+
+    
+    for(int i = 0 ; i < thread_count; i++){
+        data[i] = malloc(sizeof(ThreadData));
+        data[i]->list = list;
+        data[i]->mDelete = mDelete;
+        data[i]->mInsert = mInsert;
+        data[i]->mMember = mMember;
+        data[i]->operations = m / thread_count;
+    }
 
     double start = get_time_in_seconds();
 
-    for (int i = 0; i < m; i++) {
-        double prob = (double) rand() / RAND_MAX;
-        int val = random_number(65536);
+    for(int i = 0 ; i < thread_count ; i++){
+        pthread_create(&threads[i], NULL, thread_work, data[i]);
+    }
 
-        if (prob < mMember) {
-            member(list, val);
-        } else if (prob < mMember + mInsert) {
-            insert(list, val);
-        } else {
-            delete(list, val);
-        }
+    for(int i = 0 ; i < thread_count ; i++){
+        pthread_join(threads[i], NULL);
     }
 
     double end = get_time_in_seconds();
 
-    printf("Time with serial program using mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", mMember,mInsert, mDelete, end - start);    
+    printf("Time with read-write lock using %d threads with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", thread_count, mMember,mInsert, mDelete, end - start);    
 
     // print_list(list);
 
