@@ -148,18 +148,54 @@ void* thread_work(void* arg) {
     return NULL;
 }
 
+void print_usage(const char* program_name) {
+    printf("Usage: %s <mMember> <mInsert> <mDelete>\n", program_name);
+    printf("  mMember: Probability for member operation (0.0 - 1.0)\n");
+    printf("  mInsert: Probability for insert operation (0.0 - 1.0)\n");
+    printf("  mDelete: Probability for delete operation (0.0 - 1.0)\n");
+    printf("  Note: mMember + mInsert + mDelete should equal 1.0\n");
+    printf("  Example: %s 0.9 0.05 0.05\n", program_name);
+}
 
-int main() {
+int main(int argc, char* argv[]) {
     
+    // Check if correct number of arguments provided
+    if (argc != 4) {
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    // Parse command line arguments
+    double mMember = atof(argv[1]);
+    double mInsert = atof(argv[2]);
+    double mDelete = atof(argv[3]);
+
+    // Validate arguments
+    if (mMember < 0.0 || mMember > 1.0 ||
+        mInsert < 0.0 || mInsert > 1.0 ||
+        mDelete < 0.0 || mDelete > 1.0) {
+        printf("Error: All probability values must be between 0.0 and 1.0\n");
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    // Check if probabilities sum to approximately 1.0 (allow small floating point errors)
+    double sum = mMember + mInsert + mDelete;
+    if (sum < 0.99 || sum > 1.01) {
+        printf("Error: Probabilities must sum to 1.0 (current sum: %.3f)\n", sum);
+        print_usage(argv[0]);
+        return 1;
+    }
+
+    printf("Running with probabilities: Member=%.3f, Insert=%.3f, Delete=%.3f\n", 
+           mMember, mInsert, mDelete);
+
     pthread_mutex_init(&list_mutex, NULL);
 
     int n = 1000;
     int m = 10000;
-    double mMember =  0.5, mInsert = 0.25, mDelete = 0.25;
 
     srand(time(NULL)); // seed randomness
-
-    
 
     // Open CSV file (append mode)
     FILE* fp = fopen("results-one_mutex.csv", "w");
@@ -229,7 +265,7 @@ int main() {
     }
 
     fclose(fp);
+    pthread_mutex_destroy(&list_mutex);
 
     return 0;
 }
-
