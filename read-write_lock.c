@@ -157,54 +157,82 @@ void* thread_work(void* arg) {
 
 int main() {
 
-    LinkedList* list = list_create();
-
     pthread_rwlock_init(&list_rwlock, NULL);
 
     int n = 1000;
     int m = 10000;
-    int thread_count = 8;
-    double mMember = 0.99, mInsert = 0.005, mDelete = 0.005;
+    double mMember =  0.5, mInsert = 0.25, mDelete = 0.25;
 
     srand(time(NULL)); // seed randomness
 
-    for(int i = 0 ; i < n ; i++){
-        int value = random_number(65536);
-        if(member(list,value) == 0){
-            insert(list, value);
-            continue;
+     // Open CSV file (append mode)
+    FILE* fp = fopen("results-read-write_lock.csv", "w");
+    if (!fp) {
+        perror("Error opening CSV file");
+        return 1;
+    }
+
+    // If file is empty, write column headers
+    fseek(fp, 0, SEEK_END);
+    if (ftell(fp) == 0) {
+        fprintf(fp, "Threads,Time,Operations,mMember,mInsert,mDelete\n");
+    }
+
+    // Try with 1,2,4,8 threads
+    int thread_counts[] = {1, 2, 4, 8};
+    int num_cases = sizeof(thread_counts) / sizeof(thread_counts[0]);
+
+    for (int t = 0; t < num_cases; t++) {
+        LinkedList* list = list_create();
+        int thread_count = thread_counts[t];
+
+        for(int i = 0 ; i < n ; i++){
+            int value = random_number(65536);
+            if(member(list,value) == 0){
+                insert(list, value);
+                continue;
+            }
+            i--;
         }
-        i--;
+        
+        pthread_t threads[thread_count];
+        ThreadData* data[thread_count];
+
+        
+        for(int i = 0 ; i < thread_count; i++){
+            data[i] = malloc(sizeof(ThreadData));
+            data[i]->list = list;
+            data[i]->mDelete = mDelete;
+            data[i]->mInsert = mInsert;
+            data[i]->mMember = mMember;
+            data[i]->operations = m / thread_count;
+        }
+
+        double start = get_time_in_seconds();
+
+        for(int i = 0 ; i < thread_count ; i++){
+            pthread_create(&threads[i], NULL, thread_work, data[i]);
+        }
+
+        for(int i = 0 ; i < thread_count ; i++){
+            pthread_join(threads[i], NULL);
+        }
+
+        double end = get_time_in_seconds();
+
+        double elapsed = end - start;
+
+        printf("Time with %d threads = %f seconds\n", thread_count, elapsed);
+
+        // Save result to CSV
+        fprintf(fp, "%d,%f,%d,%f,%f,%f\n",
+                thread_count, elapsed, m, mMember, mInsert, mDelete);
+
+        for (int i = 0; i < thread_count; i++) {
+            free(data[i]);
+        }
     }
-    
-    pthread_t threads[thread_count];
-    ThreadData* data[thread_count];
 
-    
-    for(int i = 0 ; i < thread_count; i++){
-        data[i] = malloc(sizeof(ThreadData));
-        data[i]->list = list;
-        data[i]->mDelete = mDelete;
-        data[i]->mInsert = mInsert;
-        data[i]->mMember = mMember;
-        data[i]->operations = m / thread_count;
-    }
-
-    double start = get_time_in_seconds();
-
-    for(int i = 0 ; i < thread_count ; i++){
-        pthread_create(&threads[i], NULL, thread_work, data[i]);
-    }
-
-    for(int i = 0 ; i < thread_count ; i++){
-        pthread_join(threads[i], NULL);
-    }
-
-    double end = get_time_in_seconds();
-
-    printf("Time with read-write lock using %d threads with mMember = %f, mInsert = %f and mDelete = %f = %f seconds\n", thread_count, mMember,mInsert, mDelete, end - start);    
-
-    // print_list(list);
-
+    fclose(fp);
     return 0;
 }
